@@ -386,7 +386,7 @@ inline void task_dispatcher::recall_point() {
                 std::uintptr_t sp_addr = std::uintptr_t(sp);
                 return sp_addr == context.my_uniq_addr;
             };
-            sp->m_arena->my_market->get_wait_list().notify(is_related_suspend_point);
+            governor::get_wait_list().notify(is_related_suspend_point);
         });
 
         if (m_thread_data->my_inbox.is_idle_state(true)) {
