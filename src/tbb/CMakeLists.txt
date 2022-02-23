@@ -117,6 +117,7 @@ endif()
 target_link_libraries(tbb
     PRIVATE
     Threads::Threads
+	TBB::tbbmalloc
     ${TBB_LIB_LINK_LIBS}
     ${TBB_COMMON_LINK_LIBS}
 )

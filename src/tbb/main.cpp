@@ -107,9 +107,6 @@ void __TBB_InitOnce::remove_ref() {
 // One-time Initializations
 //------------------------------------------------------------------------
 
-//! Defined in cache_aligned_allocator.cpp
-void initialize_cache_aligned_allocator();
-
 //! Performs thread-safe lazy one-time general TBB initialization.
 void DoOneTimeInitialization() {
     __TBB_InitOnce::lock();
@@ -123,7 +120,6 @@ void DoOneTimeInitialization() {
         ITT_DoUnsafeOneTimeInitialization();
         itt_present = ITT_Present;
 #endif /* __TBB_USE_ITT_NOTIFY */
-        initialize_cache_aligned_allocator();
         governor::initialize_rml_factory();
         // Force processor groups support detection
         governor::default_num_threads();
