@@ -7,7 +7,8 @@ all:
     commands:
         - cmake -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
         - cmake --build . --target tbb --target tbbmalloc --config RelWithDebInfo
-        - external\7z\7za.exe a -t7z -m0=lzma2 msvc_19.25_cxx_64_md_relwithdebinfo\builds.7z .\msvc_19.25_cxx_64_md_relwithdebinfo\tbb12.dll .\msvc_19.25_cxx_64_md_relwithdebinfo\tbb12.pdb .\msvc_19.25_cxx_64_md_relwithdebinfo\tbbmalloc.dll .\msvc_19.25_cxx_64_md_relwithdebinfo\tbbmalloc.pdb
+        - git show --quiet HEAD > gitrevision.txt
+        - external\7z\7za.exe a -t7z -m0=lzma2 msvc_19.25_cxx_64_md_relwithdebinfo\builds.7z .\msvc_19.25_cxx_64_md_relwithdebinfo\tbb12.dll .\msvc_19.25_cxx_64_md_relwithdebinfo\tbb12.pdb .\msvc_19.25_cxx_64_md_relwithdebinfo\tbbmalloc.dll .\msvc_19.25_cxx_64_md_relwithdebinfo\tbbmalloc.pdb gitrevision.txt LICENSE.txt
     artifacts:
         builds:
             paths:
