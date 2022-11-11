@@ -1,0 +1,62 @@
+tbb_version: 2020.3
+
+---
+
+build_all:
+  name: Build tbb - All
+  dependencies:
+    - .yamato/build.yml#build_windows
+    - .yamato/build.yml#build_mac
+    - .yamato/build.yml#build_linux
+
+build_windows:
+    name: Build tbb - Windows
+    agent:
+        type: Unity::VM
+        image: usd-foundation/usd-build-win10:v0.1.1-1245370
+        flavor: b1.small
+    commands:
+        - bee artifacts/for-stevedore/tbb-win-x64.7z
+        - bee artifacts/for-stevedore/tbb-win-x64-dbg.7z
+        - curl -sSo StevedoreUpload.exe "%STEVEDORE_UPLOAD_TOOL_WINDOWS_X64_URL%"
+        - StevedoreUpload.exe --repo=testing --version="{{tbb_version}}" artifacts/for-stevedore/*
+    artifacts:
+        artifacts:
+            paths:
+                - artifacts/for-stevedore/*
+
+build_mac:
+    name: Build tbb - Mac
+    agent:
+        type: Unity::VM::osx
+        image: usd-foundation/usd-build-macos-10.15:v0.1.0-1221647
+        flavor: b1.small
+    commands:
+        - ./bee artifacts/for-stevedore/tbb-mac-x64.7z
+        - ./bee artifacts/for-stevedore/tbb-mac-x64-dbg.7z
+        - ./bee artifacts/for-stevedore/tbb-mac-arm64.7z
+        - ./bee artifacts/for-stevedore/tbb-mac-arm64-dbg.7z
+        - curl -sSo StevedoreUpload "$STEVEDORE_UPLOAD_TOOL_MAC_X64_URL"
+        - chmod +x StevedoreUpload
+        - ./StevedoreUpload --repo=testing --version="{{tbb_version}}" artifacts/for-stevedore/*
+    artifacts:
+        artifacts:
+            paths:
+                - artifacts/for-stevedore/*
+
+build_linux:
+    name: Build tbb - Linux
+    agent:
+        type: Unity::VM
+        image: usd-foundation/usd-build-ubuntu-18.04:v0.1.0-1221777
+        flavor: b1.small
+    commands:
+        - ./bee artifacts/for-stevedore/tbb-linux-x64.7z
+        - ./bee artifacts/for-stevedore/tbb-linux-x64-dbg.7z
+        - curl -sSo StevedoreUpload "$STEVEDORE_UPLOAD_TOOL_LINUX_X64_URL"
+        - chmod +x StevedoreUpload
+        - ./StevedoreUpload --repo=testing --version="{{tbb_version}}" artifacts/for-stevedore/*
+    artifacts:
+        artifacts:
+            paths:
+                - artifacts/for-stevedore/*

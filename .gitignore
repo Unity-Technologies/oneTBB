@@ -88,3 +88,6 @@ cmake/TBBConfigVersion.cmake
 crash*
 *.tmp
 /.vs
+artifacts/
+build.gen.sln
+builds/
