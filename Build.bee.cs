@@ -272,42 +272,44 @@ class Build
         var libDirectory = installDirectory.Combine("lib");
         var includeDirectory = installDirectory.Combine("include");
 
+        // Robocopy exit codes are unusual: 0-7 mean success. We need to use
+        // a wrapper batch script to make 0 success and non-zero failure.
         Backend.Current.AddAction(actionName: "install",
             targetFiles: new NPath[] {},
             inputs: new[] {buildDirectory},
-            executableStringFor: "(robocopy"
-                + $" {buildDirectory.ToString(SlashMode.Native)}"
-                + $" {binDirectory.ToString(SlashMode.Native)}"
-                + " /s"
-                + " tbb*.dll"
-                + " tbb*.pdb"
-                + ") ^& EXIT /B 0",
-            commandLineArguments: new string[] {},
+            executableStringFor: "robocopy.bat",
+            commandLineArguments: new[] {
+                $"{buildDirectory.ToString(SlashMode.Native)}",
+                $"{binDirectory.ToString(SlashMode.Native)}",
+                "/s",
+                "tbb*.dll",
+                "tbb*.pdb"
+            },
             targetDirectories: new NPath[] {installDirectory.Combine("bin")}
         );
         
         Backend.Current.AddAction(actionName: "install",
             targetFiles: new NPath[] {},
             inputs: new[] {buildDirectory},
-            executableStringFor: "(robocopy"
-                + $" {buildDirectory.ToString(SlashMode.Native)}"
-                + $" {libDirectory.ToString(SlashMode.Native)}"
-                + " /s"
-                + " tbb*.lib"
-                + ") ^& EXIT /B 0",
-            commandLineArguments: new string[] {},
+            executableStringFor: "robocopy.bat",
+            commandLineArguments: new[] {
+                $"{buildDirectory.ToString(SlashMode.Native)}",
+                $"{libDirectory.ToString(SlashMode.Native)}",
+                "/s",
+                "tbb*.lib"
+            },
             targetDirectories: new NPath[] {installDirectory.Combine("lib")}
         );
 
         Backend.Current.AddAction(actionName: "install",
             targetFiles: new NPath[] {},
             inputs: new[] {buildDirectory},
-            executableStringFor: "(robocopy"
-                + " include"
-                + $" {includeDirectory.ToString(SlashMode.Native)}"
-                + " /s"
-                + ") ^& EXIT /B 0",
-            commandLineArguments: new string[] {},
+            executableStringFor: "robocopy.bat",
+            commandLineArguments: new[] {
+                "include",
+                $"{includeDirectory.ToString(SlashMode.Native)}",
+                "/s"
+            },
             targetDirectories: new NPath[] {installDirectory.Combine("include")}
         );
 
