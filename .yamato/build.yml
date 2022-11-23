@@ -13,7 +13,7 @@ build_windows:
     name: Build tbb - Windows
     agent:
         type: Unity::VM
-        image: usd-foundation/usd-build-win10:v0.1.1-1245370
+        image: usd-foundation/usd-build-win10:v0.1.2-1255774
         flavor: b1.small
     commands:
         - bee artifacts/for-stevedore/tbb-win-x64.7z
