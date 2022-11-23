@@ -108,6 +108,11 @@ class Build
             $"compiler={CompilerFor(programConfiguration.Sdk)}",
             $"cfg={cfg}",
             $"tbb_build_prefix={targetId}",
+            // It's usually a bad idea to run things in parallel from the build
+            // graph where actions are already run in parallel
+            // We use bee as a wrapper for make and only build one target at a
+            // time so our build graph is linear and running things in parallel
+            // is not a problem
             $"-j {Environment.ProcessorCount}",
         };
         Dictionary<string, string> environmentVariables;
