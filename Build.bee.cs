@@ -157,18 +157,13 @@ class Build
                 macSdk.SysRoot
             };
 
-            var compileFlags = new[] {
-                $"-mmacosx-version-min={ChooseMinMacOSVersion(macSdk.Architecture)}"
-            };
-
-            commandLineArguments.Add($"CXXFLAGS=\"{string.Join(" ", compileFlags)}\"");
-
             environmentVariables = new Dictionary<string, string> {
                 {"PATH", (new[] {macSdk.BinPath})
                     .Concat(path)
                     .Select(p => p.ResolveWithFileSystem().MakeAbsolute().ToString(SlashMode.Native))
                     .SeparateWith(":")},
-                {"SDKROOT", macSdk.SysRoot.ResolveWithFileSystem().MakeAbsolute().ToString(SlashMode.Native)}
+                {"SDKROOT", macSdk.SysRoot.ResolveWithFileSystem().MakeAbsolute().ToString(SlashMode.Native)},
+                {"MACOSX_DEPLOYMENT_TARGET", ChooseMinMacOSVersion(macSdk.Architecture)}
             };
         }
         else if (programConfiguration.Sdk is LinuxClangSdk)
