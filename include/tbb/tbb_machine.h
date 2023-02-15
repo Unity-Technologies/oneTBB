@@ -204,7 +204,7 @@ template<> struct atomic_selector<8> {
         #include "machine/icc_generic.h"
     #elif defined(_M_IX86) && !defined(__TBB_WIN32_USE_CL_BUILTINS)
         #include "machine/windows_ia32.h"
-    #elif defined(_M_X64)
+    #elif defined(_M_X64) || defined(_M_ARM64)
         #include "machine/windows_intel64.h"
     #elif defined(_M_ARM) || defined(__TBB_WIN32_USE_CL_BUILTINS)
         #include "machine/msvc_armv7.h"

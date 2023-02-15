@@ -23,7 +23,7 @@
 #include <intrin.h>
 
 //TODO: consider moving this macro to tbb_config.h and using where MSVC asm is used
-#if  !_M_X64 || __INTEL_COMPILER
+#if  !(_M_X64 || _M_ARM64) || __INTEL_COMPILER
     #define __TBB_X86_MSVC_INLINE_ASM_AVAILABLE 1
 #else
     //MSVC in x64 mode does not accept inline assembler
@@ -31,7 +31,7 @@
     #define __TBB_NO_X86_MSVC_INLINE_ASM_MSG "The compiler being used is not supported (outdated?)"
 #endif
 
-#if _M_X64
+#if _M_X64 || _M_ARM64
     #define __TBB_r(reg_name) r##reg_name
     #define __TBB_W(name) name##64
     namespace tbb { namespace internal { namespace msvc_intrinsics {
@@ -73,7 +73,7 @@
     #undef __TBB_MACHINE_DEFINE_ATOMICS
 #endif /* __TBB_MSVC_PART_WORD_INTERLOCKED_INTRINSICS_PRESENT */
 
-#if _MSC_VER>=1300 || __INTEL_COMPILER>=1100
+#if (_MSC_VER>=1300 && (__TBB_x86_64 || __TBB_x86_32)) || __INTEL_COMPILER>=1100
     #pragma intrinsic(_ReadWriteBarrier)
     #pragma intrinsic(_mm_mfence)
     #define __TBB_compiler_fence()    _ReadWriteBarrier()
@@ -81,6 +81,11 @@
 #elif __TBB_X86_MSVC_INLINE_ASM_AVAILABLE
     #define __TBB_compiler_fence()    __asm { __asm nop }
     #define __TBB_full_memory_fence() __asm { __asm mfence }
+#elif _M_ARM64
+    //Now __dmb(_ARM64_BARRIER_SY) is used for both compiler and memory fences
+    //This might be changed later after testing
+    #define __TBB_compiler_fence()    __dmb(_ARM64_BARRIER_SY)
+    #define __TBB_full_memory_fence() __dmb(_ARM64_BARRIER_SY)
 #else
     #error Unsupported compiler; define __TBB_{control,acquire,release}_consistency_helper to support it
 #endif
@@ -90,15 +95,20 @@
 #define __TBB_release_consistency_helper() __TBB_compiler_fence()
 
 #if (_MSC_VER>=1300) || (__INTEL_COMPILER)
-    #pragma intrinsic(_mm_pause)
+    #if _M_ARM64
+        #define __TBB_YIELD_PROCESSOR __yield
+    #else
+        #define __TBB_YIELD_PROCESSOR _mm_pause
+    #endif
+    #pragma intrinsic(__TBB_YIELD_PROCESSOR)
     namespace tbb { namespace internal { namespace msvc_intrinsics {
         static inline void pause (uintptr_t delay ) {
             for (;delay>0; --delay )
-                _mm_pause();
+                __TBB_YIELD_PROCESSOR();
         }
     }}}
     #define __TBB_Pause(V) tbb::internal::msvc_intrinsics::pause(V)
-    #define __TBB_SINGLE_PAUSE _mm_pause()
+    #define __TBB_SINGLE_PAUSE __TBB_YIELD_PROCESSOR()
 #else
     #if !__TBB_X86_MSVC_INLINE_ASM_AVAILABLE
         #error __TBB_NO_X86_MSVC_INLINE_ASM_MSG
@@ -189,13 +199,16 @@
     #define __TBB_AtomicAND(P,V) tbb::internal::msvc_inline_asm::lock_and(P,V)
 #endif
 
+#if __TBB_x86_64 || __TBB_x86_32
 #pragma intrinsic(__rdtsc)
 namespace tbb { namespace internal { typedef uint64_t machine_tsc_t; } }
 static inline tbb::internal::machine_tsc_t __TBB_machine_time_stamp() {
     return __rdtsc();
 }
 #define __TBB_time_stamp() __TBB_machine_time_stamp()
+#endif
 
+#if __TBB_x86_64 || __TBB_x86_32
 // API to retrieve/update FPU control setting
 #define __TBB_CPU_CTL_ENV_PRESENT 1
 
@@ -239,6 +252,7 @@ public:
 };
 } // namespace internal
 } // namespace tbb
+#endif
 
 #if !__TBB_WIN8UI_SUPPORT
 extern "C" __declspec(dllimport) int __stdcall SwitchToThread( void );
@@ -252,6 +266,7 @@ extern "C" __declspec(dllimport) int __stdcall SwitchToThread( void );
 #undef __TBB_W
 #undef __TBB_word
 
+#if __TBB_TSX_AVAILABLE
 extern "C" {
     __int8 __TBB_EXPORTED_FUNC __TBB_machine_try_lock_elided (volatile void* ptr);
     void   __TBB_EXPORTED_FUNC __TBB_machine_unlock_elided (volatile void* ptr);
@@ -273,3 +288,4 @@ extern "C" {
     void             __TBB_EXPORTED_FUNC __TBB_machine_transaction_conflict_abort();
 #endif /* __TBB_TSX_INTRINSICS_PRESENT */
 }
+#endif

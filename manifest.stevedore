@@ -5,8 +5,8 @@
 # Note that because we use 'EnforceManifest', we also need to list 7za (as used internally by Stevedore).
 
 # Windows
-unity-internal: win10sdk/10.0.18362.0_3184cc7acd9b5efde4adb78a83ff79a576b1f7710192b726c40cf0c0453296e6.7z
-unity-internal: vs2019-toolchain/14.28.54c699_66beae34b435f33bace75f14d934358e1cee31006e7a4c3838a865c686709cd6.7z
+unity-internal: win10sdk/10.0.20348.0_8cb4d91820c65a64afe1334d10030be15e9bab61c5dd3ef89daffe178787bdfa.7z
+unity-internal: vs2022-toolchain/14.34.31933_7a8905490a8ca1c85300e8d31b0b8241e381cb133be1a34bc2a55765b5eac213.7z
 public: 7za-win-x64/38c5b39be2e8_a333cfccb708c88459b3812eb2597ca486ec9b416172543ca3ef8e5cd5f80984.zip
 
 # macOS

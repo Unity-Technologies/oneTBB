@@ -54,7 +54,7 @@ DLL = dll
 LIBEXT = lib
 ASMEXT = asm
 
-def_prefix = $(if $(findstring intel64,$(arch)),win64,win32)
+def_prefix = $(if $(findstring 64,$(arch)),win64,win32)
 
 # Target Windows version. Do not increase beyond 0x0502 without prior discussion!
 # Used as the value for macro definition option in windows.cl.inc etc.

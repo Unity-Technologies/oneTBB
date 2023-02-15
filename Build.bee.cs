@@ -23,10 +23,10 @@ using Bee.Core;
 using Bee.Core.Stevedore;
 using Bee.NativeProgramSupport;
 using Bee.Toolchain.Linux;
-using Bee.Toolchain.LLVM;
 using Bee.Toolchain.MacOS;
 using Bee.Toolchain.VisualStudio;
 using Bee.Toolchain.Windows;
+using Bee.Toolchain.Xcode;
 using Bee.Tools;
 using NiceIO;
 
@@ -42,11 +42,11 @@ class Build
             EnforceManifest = true,
         };
 
-        foreach (var sdk in Sdks.ForCurrentPlatformEditorSdks())
+        foreach (var toolChain in ToolChains.ForCurrentPlatformEditorTools())
         {
             foreach (CodeGen codeGen in Enum.GetValues(typeof(CodeGen)))
             {
-                var programConfiguration = new ProgramConfiguration(sdk, codeGen);
+                var programConfiguration = new ProgramConfiguration(toolChain, codeGen);
                 SetupLib(programConfiguration);
                 SetupStevedoreArtifact(programConfiguration);
             }
@@ -61,17 +61,17 @@ class Build
 
     class ProgramConfiguration
     {
-        public ProgramConfiguration(Sdk sdk, CodeGen codeGen)
+        public ProgramConfiguration(ToolChain toolChain, CodeGen codeGen)
         {
-            Sdk = sdk;
+            ToolChain = toolChain;
             CodeGen = codeGen;
         }
 
         public string GetTargetName(string separator = "_")
         {
             var targetNameParts = new List<string> {
-                Sdk.Platform.DisplayName.ToLower(),
-                Sdk.Architecture.DisplayName
+                ToolChain.Platform.DisplayName.ToLower(),
+                ToolChain.Architecture.DisplayName
             };
 
             if (CodeGen == CodeGen.Debug)
@@ -92,7 +92,7 @@ class Build
             return string.Join(separator, artifactNameParts);
         }
 
-        public Sdk Sdk { get; private set; }
+        public ToolChain ToolChain { get; private set; }
         public CodeGen CodeGen { get; private set; }
     }
 
@@ -104,8 +104,8 @@ class Build
         NPath[] inputs;
         var commandLineArguments = new List<string>
         {
-            $"arch={ArchFor(programConfiguration.Sdk.Architecture)}",
-            $"compiler={CompilerFor(programConfiguration.Sdk)}",
+            $"arch={ArchFor(programConfiguration.ToolChain.Architecture)}",
+            $"compiler={CompilerFor(programConfiguration.ToolChain)}",
             $"cfg={cfg}",
             $"tbb_build_prefix={targetId}",
             // It's usually a bad idea to run things in parallel from the build
@@ -119,18 +119,28 @@ class Build
 
         var path = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator).ToNPaths().ToArray() ?? Array.Empty<NPath>();
     
-        if (programConfiguration.Sdk is WindowsSdk)
+        if (programConfiguration.ToolChain is WindowsToolchain)
         {
-            WindowsSdk windowsSdk = (WindowsSdk)programConfiguration.Sdk;
+            WindowsSdk windowsSdk = (WindowsSdk)programConfiguration.ToolChain.Sdk;
 
-            var binPaths = windowsSdk.EnvironmentVariables["PATH"].Split(";").ToNPaths();
+            // Hack to access MSVC tools for the target architecture and Windows
+            // SDK tools for the host architecture
+            var binPaths = new[] {
+                windowsSdk.VSToolPath(""),
+                windowsSdk.ToolPath("")
+            };
             inputs = binPaths
                 .Concat(windowsSdk.IncludePaths)
                 .Concat(windowsSdk.LibraryPaths)
                 .ToArray();
 
+
+            WindowsCompiler compiler = (WindowsCompiler)programConfiguration.ToolChain.CppCompiler;
             var compileFlags = new[] {
-                "/D_ITERATOR_DEBUG_LEVEL=0"
+                "/D_ITERATOR_DEBUG_LEVEL=0",
+                $"/DWINVER=0x{compiler.MinOSVersion.WinVerDefine:X4}",
+                $"/D_WIN32_WINNT=0x{compiler.MinOSVersion.WinVerDefine:X4}",
+                $"/DNTDDI_VERSION=0x{compiler.MinOSVersion.NtDdiDefine:X8}"
             };
 
             commandLineArguments.Add($"CXXFLAGS=\"{string.Join(" ", compileFlags)}\"");
@@ -148,27 +158,29 @@ class Build
                     .SeparateWith(";")}
             };
         }
-        else if (programConfiguration.Sdk is MacSdk)
+        else if (programConfiguration.ToolChain is XcodeToolchain)
         {
-            MacSdk macSdk = (MacSdk)programConfiguration.Sdk;
+            MacSdk macSdk = (MacSdk)programConfiguration.ToolChain.Sdk;
 
             inputs = new[] {
                 macSdk.BinPath,
                 macSdk.SysRoot
             };
 
+            XcodeClangCompiler compiler = (XcodeClangCompiler)programConfiguration.ToolChain.CppCompiler;
+            XcodeClangCompilerSettings settings = (XcodeClangCompilerSettings)compiler.DefaultSettings;
             environmentVariables = new Dictionary<string, string> {
                 {"PATH", (new[] {macSdk.BinPath})
                     .Concat(path)
                     .Select(p => p.ResolveWithFileSystem().MakeAbsolute().ToString(SlashMode.Native))
                     .SeparateWith(":")},
                 {"SDKROOT", macSdk.SysRoot.ResolveWithFileSystem().MakeAbsolute().ToString(SlashMode.Native)},
-                {"MACOSX_DEPLOYMENT_TARGET", ChooseMinMacOSVersion(macSdk.Architecture)}
+                {"MACOSX_DEPLOYMENT_TARGET", settings.MinOSVersion}
             };
         }
-        else if (programConfiguration.Sdk is LinuxClangSdk)
+        else if (programConfiguration.ToolChain is LinuxClangToolchain)
         {
-            LinuxClangSdk linuxClangSdk = (LinuxClangSdk)programConfiguration.Sdk;
+            LinuxClangSdk linuxClangSdk = (LinuxClangSdk)programConfiguration.ToolChain.Sdk;
 
             inputs = new[] {
                 linuxClangSdk.SysRoot,
@@ -200,7 +212,7 @@ class Build
         }
         else
         {
-            throw new Exception($"Unsupported Sdk {programConfiguration.Sdk} for {nameof(SetupLib)}");
+            throw new Exception($"Unsupported ToolChain {programConfiguration.ToolChain} for {nameof(SetupLib)}");
         }
         
         var buildDirectory = new NPath($"build/{targetId}_{cfg}");
@@ -215,11 +227,11 @@ class Build
             targetDirectories: new[] {buildDirectory}
         );
 
-        if (programConfiguration.Sdk is WindowsSdk)
+        if (programConfiguration.ToolChain.Platform is WindowsPlatform)
         {
             Install_Windows(buildDirectory, installDirectory, targetId);
         }
-        else if (programConfiguration.Sdk is LinuxClangSdk || programConfiguration.Sdk is MacSdk)
+        else if (programConfiguration.ToolChain.Platform is LinuxPlatform || programConfiguration.ToolChain.Platform is MacOSXPlatform)
         {
             Install_LinuxOrMacOS(buildDirectory, installDirectory, targetId);
         }
@@ -233,7 +245,7 @@ class Build
             executableStringFor: "cmake",
             commandLineArguments: new[] {
                 $"-DINSTALL_DIR={installDirectory.Combine("cmake").InQuotes(SlashMode.Native)}",
-                $"-DSYSTEM_NAME={SystemNameFor(programConfiguration.Sdk)}",
+                $"-DSYSTEM_NAME={SystemNameFor(programConfiguration.ToolChain.Platform)}",
                 $"-DTBB_VERSION_FILE={installDirectory.Combine("include/tbb/tbb_stddef.h").InQuotes(SlashMode.Native)}",
                 "-DINC_REL_PATH=../include",
                 "-DLIB_REL_PATH=../lib",
@@ -252,11 +264,11 @@ class Build
         throw new Exception($"Unsupported architecture {architecture} for {nameof(ArchFor)}");
     }
 
-    static string CompilerFor(Sdk sdk)
+    static string CompilerFor(ToolChain toolChain)
     {
-        if (sdk is VisualStudioSdk) return "cl";
-        if (sdk is ClangSdk || sdk is LinuxClangSdk) return "clang";
-        throw new Exception($"Unsupported Sdk {sdk} for {nameof(CompilerFor)}");
+        if (toolChain is VisualStudioToolchain) return "cl";
+        if (toolChain is XcodeToolchain || toolChain is LinuxClangToolchain) return "clang";
+        throw new Exception($"Unsupported ToolChain {toolChain} for {nameof(CompilerFor)}");
     }
 
     static string CfgFor(CodeGen codeGen)
@@ -266,20 +278,12 @@ class Build
         throw new Exception($"Unsupported CodeGen {codeGen} for {nameof(CfgFor)}");
     }
 
-    static string ChooseMinMacOSVersion(Architecture architecture)
+    static string SystemNameFor(Platform platform)
     {
-        if (architecture is Arm64Architecture)
-            return "11.0";
-
-        return "10.14";
-    }
-
-    static string SystemNameFor(Sdk sdk)
-    {
-        if (sdk is WindowsSdk) return "Windows";
-        if (sdk is MacSdk) return "Darwin";
-        if (sdk is LinuxClangSdk) return "Linux";
-        throw new Exception($"Unsupported Sdk {sdk} for {nameof(CompilerFor)}");
+        if (platform is WindowsPlatform) return "Windows";
+        if (platform is MacOSXPlatform) return "Darwin";
+        if (platform is LinuxPlatform) return "Linux";
+        throw new Exception($"Unsupported Platform {platform} for {nameof(SystemNameFor)}");
     }
 
     static void Install_Windows(NPath buildDirectory, NPath installDirectory, string targetId)
@@ -380,7 +384,7 @@ class Build
 
         var contents = new ZipArchiveContents();
         contents.AddFileToArchive("LICENSE");
-        if (programConfiguration.Sdk is WindowsSdk)
+        if (programConfiguration.ToolChain.Platform is WindowsPlatform)
         {
             contents.AddFileToArchive($"builds/{targetId}/bin", "bin"); 
         }
