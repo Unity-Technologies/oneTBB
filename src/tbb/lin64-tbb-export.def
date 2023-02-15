@@ -23,7 +23,8 @@ global:
 local:
 
 /* TBB symbols */
-*3tbb*;
+#define __TBB_SYMBOL( sym ) sym;
+#include "lin64-tbb-hidden.lst"
 *__TBB*;
 
 /* ITT symbols */

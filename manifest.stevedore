@@ -1,0 +1,20 @@
+# The manifest dictates what version we're using of each artifact (and which repo to download them from).
+
+# Comments and whitespace can e.g. be used to group by OS (as below), or tool (e.g. all Nasm in one group).
+
+# Note that because we use 'EnforceManifest', we also need to list 7za (as used internally by Stevedore).
+
+# Windows
+unity-internal: win10sdk/10.0.18362.0_3184cc7acd9b5efde4adb78a83ff79a576b1f7710192b726c40cf0c0453296e6.7z
+unity-internal: vs2019-toolchain/14.28.54c699_66beae34b435f33bace75f14d934358e1cee31006e7a4c3838a865c686709cd6.7z
+public: 7za-win-x64/38c5b39be2e8_a333cfccb708c88459b3812eb2597ca486ec9b416172543ca3ef8e5cd5f80984.zip
+
+# macOS
+unity-internal: mac-toolchain-11_1/12.3-12C33_a75b786ded9dce044b778e4c2c37b7144c46e1b0dd48a07b9128377380ec0dff.7z
+public: 7za-mac-x64/95bf0d3a17b5_1887c56255e2db1134e118f27abe1ec62a2aca092ec9f72600c80659da17ca11.zip
+public: 7za-mac-arm64/904b71ca3f79_d3a558ccc0a0d9e00fbf5e7323256bc6de8fdf6d68b8f94e8c5a5e9c37454134.zip
+
+# Linux
+public: clang-centos-x64-9/ed79bc8-7.7.1908_9df4314fcceb51748d7015e33e3394f960cbf30f402632d739318b0391598261.7z
+public: linux-sysroot-amd64/glibc2.17_21db091a7ba6f278ece53e4afe50f840f2ba704112aaed9562fbd86421e4ce3b.7z
+public: 7za-linux-x64/9e098bea868c_201bbbd99b245a6f887497113ec305d1a7d158a1595d753e77017237ac91b722.zip
