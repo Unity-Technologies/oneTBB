@@ -127,7 +127,7 @@ class Build
             // SDK tools for the host architecture
             var binPaths = new[] {
                 windowsSdk.VSToolPath(""),
-                windowsSdk.ToolPath("")
+                windowsSdk.ToolPath("dxc.exe").Parent
             };
             inputs = binPaths
                 .Concat(windowsSdk.IncludePaths)
