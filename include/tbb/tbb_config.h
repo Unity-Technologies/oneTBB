@@ -401,7 +401,7 @@
     #define __TBB_MSVC_PART_WORD_INTERLOCKED_INTRINSICS_PRESENT 1
 #endif
 
-#define __TBB_TSX_INTRINSICS_PRESENT ((__RTM__ || _MSC_VER>=1700 || __INTEL_COMPILER>=1300) && !__TBB_DEFINE_MIC && !__ANDROID__)
+#define __TBB_TSX_INTRINSICS_PRESENT (__RTM__ || __INTEL_COMPILER || (_MSC_VER>=1700 && (__TBB_x86_64 || __TBB_x86_32)))
 
 /** Macro helpers **/
 #define __TBB_CONCAT_AUX(A,B) A##B

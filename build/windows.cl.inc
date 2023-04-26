@@ -135,7 +135,7 @@ ifeq (intel64,$(arch))
     TBB_ASM.OBJ = atomic_support.obj intel64_misc.obj itsx.obj
     MALLOC_ASM.OBJ = atomic_support.obj
 else
-ifeq (armv7,$(arch))
+ifeq ($(arch),$(filter $(arch),armv7 arm64))
     ASM=
     TBB_ASM.OBJ= 
 else

@@ -24,12 +24,14 @@ using Bee.Stevedore.Program;
 using Bee.Toolchain.Linux;
 using Bee.Toolchain.MacOS;
 using Bee.Toolchain.VisualStudio;
-using Bee.Toolchain.VisualStudio.MsvcVersions;
 using Bee.Toolchain.Windows;
 using Bee.Tools;
 
-static class Sdks
+static class ToolChains
 {
+    // Windows Editor minspec: Windows 10 Version 1909 - build 18363 (but 18363 has no API target so we have to target 18362)
+    public static readonly TargetWindowsVersion MinSupportedOSVersion = TargetWindowsVersion.Windows10_18362;
+
     public static T LocateVisualStudioSdkToUse<T>(SdkLocator<T> locator, Version msvcToolsetVersion, Version win10SdkVersion) where T : VisualStudioSdk
     {
         var candidates = locator.All;
@@ -52,7 +54,8 @@ static class Sdks
                 && sdk.MsvcToolsetVersion.Minor == msvcToolsetVersion.Minor
                 // Comparing the 'Build' version is necessary because 14.28 had
                 // breaking changes between sub-minor release numbers
-                && sdk.MsvcToolsetVersion.Build == msvcToolsetVersion.Build);
+                // but if we're not explicitly requesting a build we don't care.
+                && (sdk.MsvcToolsetVersion.Build == msvcToolsetVersion.Build || msvcToolsetVersion.Build == -1 ));
         }
 
         // Prefer locally installed SDKs over downloadable ones
@@ -98,6 +101,8 @@ static class Sdks
         return locatedSdk ?? locator.Dummy;
     }
 
+    public static Version VS2022VersionFromManifest => VSVersionFromManifest("vs2022-toolchain");
+
     public static string GetVersionFromManifest(string artifactName)
     {
         if (!Backend.Current.StevedoreSettings.Manifest.Entries.TryGetValue(new ArtifactName(artifactName), out var value))
@@ -107,30 +112,22 @@ static class Sdks
         return value.ArtifactId.Version.VersionString;
     }
 
-    public static Version VS2019VersionFromManifest
+    public static Version VSVersionFromManifest(string stevedoreArtifactID)
     {
-        get
-        {
-            // VS2019 Stevedore artifacts are named using their toolchain version, but we want the VS version
-            // for comparing them
-            var vs2019VersionString = GetVersionFromManifest("vs2019-toolchain");
-            if (vs2019VersionString == null)
-                return null;
+        // VS Stevedore artifacts are named using their toolchain version, but we want the VS version
+        // for comparing them
+        var vsVersionString = GetVersionFromManifest(stevedoreArtifactID);
+        if (vsVersionString == null)
+            return null;
 
-            var parts = new System.Text.RegularExpressions.Regex(@"^(?<major>\d+)\.(?<minor>\d+)\..+$")
-                .Match(vs2019VersionString);
+        var parts = new System.Text.RegularExpressions.Regex(@"^(?<major>\d+)\.(?<minor>\d+)\.((?<build>\d{5})|([a-e0-9]{6}))$")
+            .Match(vsVersionString);
 
-            var version = new Version(int.Parse(parts.Groups["major"].Value), int.Parse(parts.Groups["minor"].Value));
-            if (version.Major == 14 && version.Minor == 28)
-            {
-                // MSVC 14.28 made multiple sub-minor releases that were incompatible, so we require a specific Build
-                // version for this toolset. The Stevedore artifact name does not contain the Build number so we have
-                // to just supply it here.
-                version = new Version(version.Major, version.Minor, 29333);
-            }
+        var version = parts.Groups.ContainsKey("build")?
+            new Version(int.Parse(parts.Groups["major"].Value), int.Parse(parts.Groups["minor"].Value)):
+            new Version(int.Parse(parts.Groups["major"].Value), int.Parse(parts.Groups["minor"].Value), int.Parse(parts.Groups["build"].Value));;
 
-            return version;
-        }
+        return version;
     }
 
     public static Version Win10SdkVersionFromManifest
@@ -145,38 +142,39 @@ static class Sdks
         }
     }
 
-    public static WindowsSdk ForWindows(Architecture architecture)
+    public static ToolChain ForWindows(Architecture architecture, TargetWindowsVersion minOSVersion)
     {
-        Version msvcVersion = VS2019VersionFromManifest;
+        Version msvcVersion = VS2022VersionFromManifest;
         Version win10SdkVersion = Win10SdkVersionFromManifest;
-        return LocateVisualStudioSdkToUse(WindowsSdk.LocatorFor(Architecture.x64), msvcVersion, win10SdkVersion);
+        return new WindowsToolchain(LocateVisualStudioSdkToUse(WindowsSdk.LocatorFor(architecture), msvcVersion, win10SdkVersion), minOSVersion);
     }
 
-    public static LinuxClangSdk ForLinux(Architecture architecture)
+    public static ToolChain ForLinux(Architecture architecture)
     {
-        if (architecture is x64Architecture) return LinuxClangSdk.Locatorx64.UserDefaultOrLatest;
+        if (architecture is x64Architecture) return new LinuxClangToolchain(LinuxClangSdk.Locatorx64.UserDefaultOrLatest);
         throw new Exception($"Unsupported architecture {architecture} for {nameof(LinuxClangSdk)}");
     }
 
-    public static MacSdk ForMacOS(Architecture architecture)
+    public static ToolChain ForMacOS(Architecture architecture, string minOSVersion = null)
     {
         var locator = MacSdk.LocatorFor(architecture);
-        return locator.DownloadableSdks.FirstOrDefault(sdk => sdk.Version == new Version(11, 1) && sdk.SupportedOnHostPlatform);
+        var downloadableMacSdk = locator.DownloadableSdks.FirstOrDefault(sdk => sdk.Version == new Version(11, 1) && sdk.SupportedOnHostPlatform);
+        return downloadableMacSdk != null ? new MacToolchain(downloadableMacSdk, minOSVersion) : new MacToolchain(locator.UserDefaultOrDummy, minOSVersion);
     }
 
-    static Lazy<Sdk[]> s_CurrentPlatformEditorSdks = new Lazy<Sdk[]>(() =>
+    static Lazy<ToolChain[]> s_CurrentPlatformEditorToolChains = new Lazy<ToolChain[]>(() =>
     {
         if (HostPlatform.IsWindows)
-            return new[] { ForWindows(Architecture.x64) };
+            return new[] { ForWindows(Architecture.x64, MinSupportedOSVersion), ForWindows(Architecture.Arm64, MinSupportedOSVersion) };
 
         if (HostPlatform.IsLinux)
             return new[] { ForLinux(Architecture.x64) };
 
         if (HostPlatform.IsOSX)
-            return new[] { ForMacOS(Architecture.x64), ForMacOS(Architecture.Arm64) };
+            return new[] { ForMacOS(Architecture.x64, "10.14"), ForMacOS(Architecture.Arm64) };
 
-        throw new ArgumentException($"Unsupported platform for {nameof(ForCurrentPlatformEditorSdks)}");
+        throw new ArgumentException($"Unsupported platform for {nameof(ForCurrentPlatformEditorTools)}");
     });
 
-    public static Sdk[] ForCurrentPlatformEditorSdks() => s_CurrentPlatformEditorSdks.Value;
+    public static ToolChain[] ForCurrentPlatformEditorTools() => s_CurrentPlatformEditorToolChains.Value;
 }
