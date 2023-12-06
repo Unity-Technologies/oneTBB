@@ -24,7 +24,7 @@ build_windows:
         - brick_source: git@github.cds.internal.unity3d.com:unity/batch.cds.ci.code-signing.git@v1.0.8
           variables:
               AZURE_CERTIFICATE: ev-unity-technologies-sf
-              FILES: tbb-win-x64-sgn\bin\tbb.dll tbb-win-x64-sgn\bin\tbbmalloc.dll tbb-win-x64-sgn\tbbmalloc_proxy.dll
+              FILES: tbb-win-x64-sgn\bin\tbb.dll tbb-win-x64-sgn\bin\tbbmalloc.dll tbb-win-x64-sgn\bin\tbbmalloc_proxy.dll
         - 7z a artifacts\for-stevedore\tbb-win-x64-sgn.7z .\tbb-win-x64-sgn\* -aoa
         - del artifacts\for-stevedore\tbb-win-x64.7z
         - curl -sSo StevedoreUpload.exe "%STEVEDORE_UPLOAD_TOOL_WINDOWS_X64_URL%"
