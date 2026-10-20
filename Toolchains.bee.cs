@@ -165,7 +165,7 @@ static class ToolChains
     static Lazy<ToolChain[]> s_CurrentPlatformEditorToolChains = new Lazy<ToolChain[]>(() =>
     {
         if (HostPlatform.IsWindows)
-            return new[] { ForWindows(Architecture.x64, MinSupportedOSVersion), ForWindows(Architecture.Arm64, MinSupportedOSVersion) };
+            return new[] { ForWindows(Architecture.x64, MinSupportedOSVersion), ForWindows(Architecture.Arm64, MinSupportedOSVersion), ForWindows(Architecture.x86, MinSupportedOSVersion) };
 
         if (HostPlatform.IsLinux)
             return new[] { ForLinux(Architecture.x64) };

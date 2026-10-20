@@ -261,6 +261,7 @@ class Build
     {
         if (architecture is x64Architecture) return "intel64";
         if (architecture is Arm64Architecture) return "arm64";
+        if (architecture is x86Architecture) return "ia32";
         throw new Exception($"Unsupported architecture {architecture} for {nameof(ArchFor)}");
     }
 

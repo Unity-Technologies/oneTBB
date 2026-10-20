@@ -20,6 +20,8 @@ build_windows:
         - bee artifacts/for-stevedore/tbb-win-x64-dbg.7z
         - bee artifacts/for-stevedore/tbb-win-arm64.7z
         - bee artifacts/for-stevedore/tbb-win-arm64-dbg.7z
+        - bee artifacts/for-stevedore/tbb-win-x86.7z
+        - bee artifacts/for-stevedore/tbb-win-x86-dbg.7z
         - curl -sSo StevedoreUpload.exe "%STEVEDORE_UPLOAD_TOOL_WINDOWS_X64_URL%"
         - StevedoreUpload.exe --repo=testing --version="{{tbb_version}}" artifacts/for-stevedore/*
     artifacts:
