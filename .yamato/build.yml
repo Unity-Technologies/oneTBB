@@ -14,7 +14,7 @@ build_windows:
     agent:
         type: Unity::VM
         image: usd-foundation/usd-build-win10:v0.1.2-1255774
-        flavor: b1.small
+        flavor: b1.large
     commands:
         - bee artifacts/for-stevedore/tbb-win-x64.7z
         - bee artifacts/for-stevedore/tbb-win-x64-dbg.7z
